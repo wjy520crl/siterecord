@@ -46,8 +46,8 @@ import com.jiangxin.siterecord.util.formatDate
 @Composable
 fun MemoListScreen(navController: androidx.navigation.NavController) {
     val application = LocalContext.current.applicationContext as SiteRecordApp
-    val memos by application.memoRepository.observeAll().collectAsState()
-    val projects by application.projectRepository.observeAll().collectAsState()
+    val memos by application.memoRepository.observeAll().collectAsState(initial = emptyList())
+    val projects by application.projectRepository.observeAll().collectAsState(initial = emptyList())
 
     var selProject by remember { mutableStateOf<Long?>(null) }
     var query by remember { mutableStateOf("") }

@@ -63,7 +63,7 @@ import kotlinx.coroutines.launch
 fun MemoFormScreen(navController: androidx.navigation.NavController, projectId: Long, memoId: Long?) {
     val ctx = LocalContext.current.applicationContext as SiteRecordApp
     val repo = ctx.memoRepository
-    val projects by ctx.projectRepository.observeAll().collectAsState()
+    val projects by ctx.projectRepository.observeAll().collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
     var effectiveProjectId by remember { mutableStateOf(projectId) }
     var projectExpanded by remember { mutableStateOf(false) }

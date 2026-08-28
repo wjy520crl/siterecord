@@ -45,8 +45,8 @@ import com.jiangxin.siterecord.util.formatDateTime
 @Composable
 fun InspectionListScreen(navController: androidx.navigation.NavController) {
     val application = LocalContext.current.applicationContext as SiteRecordApp
-    val list by application.inspectionRepository.observeAll().collectAsState()
-    val projects by application.projectRepository.observeAll().collectAsState()
+    val list by application.inspectionRepository.observeAll().collectAsState(initial = emptyList())
+    val projects by application.projectRepository.observeAll().collectAsState(initial = emptyList())
 
     var selProject by remember { mutableStateOf<Long?>(null) }
     var query by remember { mutableStateOf("") }

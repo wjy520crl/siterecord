@@ -79,7 +79,7 @@ private data class ItemDraft(
 fun InspectionFormScreen(navController: androidx.navigation.NavController, projectId: Long, inspectionId: Long?) {
     val ctx = LocalContext.current.applicationContext as SiteRecordApp
     val repo = ctx.inspectionRepository
-    val projects by ctx.projectRepository.observeAll().collectAsState()
+    val projects by ctx.projectRepository.observeAll().collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
     var effectiveProjectId by remember { mutableStateOf(projectId) }
     var projectExpanded by remember { mutableStateOf(false) }
@@ -219,7 +219,7 @@ fun InspectionFormScreen(navController: androidx.navigation.NavController, proje
                         onDeletePhoto = { p -> items = items.update(index) { copy(photos = photos - p) } },
                         onDelete = {
                             items = items - d
-                            if (d.id != 0L) repo.deleteItem(InspectionItem(id = d.id, inspectionId = inspectionId ?: 0, projectId = projectId, area = d.area, description = d.description, severity = d.severity, photos = d.photos, needFix = d.needFix, fixDeadline = d.fixDeadline, fixStatus = d.fixStatus, owner = d.owner, recheckNote = d.recheckNote))
+                            if (d.id != 0L) scope.launch { repo.deleteItem(InspectionItem(id = d.id, inspectionId = inspectionId ?: 0, projectId = projectId, area = d.area, description = d.description, severity = d.severity, photos = d.photos, needFix = d.needFix, fixDeadline = d.fixDeadline, fixStatus = d.fixStatus, owner = d.owner, recheckNote = d.recheckNote)) }
                         }
                     )
                 }
