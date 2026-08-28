@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -30,7 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewModelScope
 import com.jiangxin.siterecord.SiteRecordApp
@@ -88,8 +89,8 @@ fun ProjectDetailScreen(navController: androidx.navigation.NavController, projec
             override fun <T : ViewModel> create(modelClass: Class<T>): T = ProjectDetailViewModel(application, projectId) as T
         }
     )
-    val project by vm.project.collectAsStateWithLifecycle()
-    val timeline by vm.timeline.collectAsStateWithLifecycle()
+    val project by vm.project.collectAsState()
+    val timeline by vm.timeline.collectAsState()
 
     Scaffold(
         topBar = {
@@ -156,6 +157,6 @@ private fun InfoRow(label: String, value: String) {
 }
 
 @Composable
-private fun TextButton(onClick: () -> Unit, content: @Composable () -> Unit) {
+private fun TextButton(onClick: () -> Unit, content: @Composable RowScope.() -> Unit) {
     androidx.compose.material3.TextButton(onClick = onClick, content = content)
 }

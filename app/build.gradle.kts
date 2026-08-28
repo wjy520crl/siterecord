@@ -64,8 +64,6 @@ dependencies {
     implementation(libs.camera.camera2)
     implementation(libs.camera.lifecycle)
     implementation(libs.camera.view)
-    implementation(libs.workmanager.runtime)
-    implementation(libs.workmanager.ktx)
     implementation(libs.gson)
     implementation(libs.coroutines.android)
 

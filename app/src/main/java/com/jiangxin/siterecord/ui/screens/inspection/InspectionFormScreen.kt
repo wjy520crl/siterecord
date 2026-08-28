@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
@@ -36,13 +37,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.collectAsState
 import com.jiangxin.siterecord.SiteRecordApp
 import com.jiangxin.siterecord.camera.LocationHelper
 import com.jiangxin.siterecord.camera.WatermarkCamera
@@ -55,6 +57,7 @@ import com.jiangxin.siterecord.data.local.entity.Severity
 import com.jiangxin.siterecord.ui.components.PhotoThumb
 import com.jiangxin.siterecord.util.formatDate
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import java.io.File
 import java.util.Calendar
 
@@ -76,7 +79,8 @@ private data class ItemDraft(
 fun InspectionFormScreen(navController: androidx.navigation.NavController, projectId: Long, inspectionId: Long?) {
     val ctx = LocalContext.current.applicationContext as SiteRecordApp
     val repo = ctx.inspectionRepository
-    val projects by ctx.projectRepository.observeAll().collectAsStateWithLifecycle()
+    val projects by ctx.projectRepository.observeAll().collectAsState()
+    val scope = rememberCoroutineScope()
     var effectiveProjectId by remember { mutableStateOf(projectId) }
     var projectExpanded by remember { mutableStateOf(false) }
     val nameOf: (Long) -> String = { id -> projects.firstOrNull { it.id == id }?.name ?: "" }
@@ -128,6 +132,7 @@ fun InspectionFormScreen(navController: androidx.navigation.NavController, proje
                 },
                 actions = {
                     TextButton(onClick = {
+                        scope.launch {
                         val inspection = Inspection(
                             id = inspectionId ?: 0,
                             projectId = effectiveProjectId,
@@ -149,6 +154,7 @@ fun InspectionFormScreen(navController: androidx.navigation.NavController, proje
                             if (d.id == 0L) repo.insertItem(entity) else repo.updateItem(entity)
                         }
                         navController.popBackStack()
+                        }
                     }) { Text("保存") }
                 }
             )
@@ -257,7 +263,7 @@ private fun ItemCard(
                 Checkbox(checked = d.needFix, onCheckedChange = onNeedFix)
                 Text("需整改")
             }
-            Row(verticalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text("整改期限：", style = MaterialTheme.typography.labelSmall)
                 Text(formatDate(d.fixDeadline), style = MaterialTheme.typography.bodyMedium)
                 DateField("选择", d.fixDeadline) { onFixDeadline(it) }

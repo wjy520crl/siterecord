@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,7 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewModelScope
 import com.jiangxin.siterecord.SiteRecordApp
@@ -64,8 +65,8 @@ class ProjectListViewModel(app: Application) : AndroidViewModel(app) {
 @Composable
 fun ProjectListScreen(navController: androidx.navigation.NavController) {
     val vm: ProjectListViewModel = viewModel()
-    val list by vm.filtered.collectAsStateWithLifecycle()
-    val query by vm.query.collectAsStateWithLifecycle()
+    val list by vm.filtered.collectAsState()
+    val query by vm.query.collectAsState()
 
     Scaffold(
         topBar = { TopAppBar(title = { Text("项目") }) },
@@ -106,7 +107,7 @@ private fun ProjectCard(project: Project, onClick: () -> Unit) {
         ) {
             Box(
                 modifier = Modifier.size(40.dp).clip(CircleShape)
-                    .then(androidx.compose.foundation.background(MaterialTheme.colorScheme.primary)),
+                    .background(MaterialTheme.colorScheme.primary),
                 contentAlignment = Alignment.Center
             ) {
                 Text(project.name.firstOrNull()?.toString() ?: "?", color = MaterialTheme.colorScheme.onPrimary)

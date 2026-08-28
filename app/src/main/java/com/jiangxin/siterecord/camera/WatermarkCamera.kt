@@ -9,7 +9,6 @@ import android.graphics.Paint
 import android.graphics.Typeface
 import android.graphics.RectF
 import java.io.File
-import kotlin.math.minOf
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -27,7 +26,7 @@ object WatermarkCamera {
 
             val canvas = Canvas(bmp)
             val density = context.resources.displayMetrics.density
-            val minSide = minOf(bmp.width, bmp.height)
+            val minSide = if (bmp.width <= bmp.height) bmp.width else bmp.height
             val barH = (minSide * 0.12f).coerceAtLeast(60f * density)
             val barTop = bmp.height - barH
 

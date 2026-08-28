@@ -24,7 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewModelScope
 import com.jiangxin.siterecord.SiteRecordApp
@@ -121,11 +121,11 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
 fun HomeScreen(navController: androidx.navigation.NavController) {
     val vm: HomeViewModel = viewModel()
     val context = LocalContext.current
-    val pc by vm.metricProjectCount.collectAsStateWithLifecycle()
-    val unfixed by vm.metricUnfixed.collectAsStateWithLifecycle()
-    val pending by vm.metricPending.collectAsStateWithLifecycle()
-    val overdue by vm.metricOverdue.collectAsStateWithLifecycle()
-    val followUps by vm.followUps.collectAsStateWithLifecycle()
+    val pc by vm.metricProjectCount.collectAsState()
+    val unfixed by vm.metricUnfixed.collectAsState()
+    val pending by vm.metricPending.collectAsState()
+    val overdue by vm.metricOverdue.collectAsState()
+    val followUps by vm.followUps.collectAsState()
 
     Scaffold(topBar = {
         TopAppBar(

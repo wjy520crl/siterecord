@@ -2,6 +2,7 @@ package com.jiangxin.siterecord.ui.screens.memo
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,7 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.collectAsState
 import com.jiangxin.siterecord.SiteRecordApp
 import com.jiangxin.siterecord.data.local.entity.Memo
 import com.jiangxin.siterecord.data.local.entity.Project
@@ -45,8 +46,8 @@ import com.jiangxin.siterecord.util.formatDate
 @Composable
 fun MemoListScreen(navController: androidx.navigation.NavController) {
     val application = LocalContext.current.applicationContext as SiteRecordApp
-    val memos by application.memoRepository.observeAll().collectAsStateWithLifecycle()
-    val projects by application.projectRepository.observeAll().collectAsStateWithLifecycle()
+    val memos by application.memoRepository.observeAll().collectAsState()
+    val projects by application.projectRepository.observeAll().collectAsState()
 
     var selProject by remember { mutableStateOf<Long?>(null) }
     var query by remember { mutableStateOf("") }
@@ -74,7 +75,7 @@ fun MemoListScreen(navController: androidx.navigation.NavController) {
                         onValueChange = {},
                         readOnly = true,
                         label = { Text("项目") },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                         trailingIcon = { androidx.compose.material3.IconButton(onClick = { expanded = !expanded }) { Icon(Icons.Filled.ArrowDropDown, null) } }
                     )
                     DropdownMenu(expanded, { expanded = false }) {

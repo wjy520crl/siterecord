@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
@@ -35,13 +36,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.collectAsState
 import com.jiangxin.siterecord.SiteRecordApp
 import com.jiangxin.siterecord.camera.LocationHelper
 import com.jiangxin.siterecord.camera.WatermarkCamera
@@ -54,13 +56,15 @@ import com.jiangxin.siterecord.ui.components.PhotoThumb
 import com.jiangxin.siterecord.util.formatDate
 import java.io.File
 import java.util.Calendar
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MemoFormScreen(navController: androidx.navigation.NavController, projectId: Long, memoId: Long?) {
     val ctx = LocalContext.current.applicationContext as SiteRecordApp
     val repo = ctx.memoRepository
-    val projects by ctx.projectRepository.observeAll().collectAsStateWithLifecycle()
+    val projects by ctx.projectRepository.observeAll().collectAsState()
+    val scope = rememberCoroutineScope()
     var effectiveProjectId by remember { mutableStateOf(projectId) }
     var projectExpanded by remember { mutableStateOf(false) }
     val nameOf: (Long) -> String = { id -> projects.firstOrNull { it.id == id }?.name ?: "" }
@@ -108,6 +112,7 @@ fun MemoFormScreen(navController: androidx.navigation.NavController, projectId: 
                 },
                 actions = {
                     TextButton(onClick = {
+                        scope.launch {
                         val memo = Memo(
                             id = memoId ?: 0,
                             projectId = effectiveProjectId,
@@ -123,9 +128,10 @@ fun MemoFormScreen(navController: androidx.navigation.NavController, projectId: 
                         )
                         val savedId = if (memoId == null) repo.insert(memo) else { repo.update(memo); memoId }
                         if (deadline != null) {
-                            ReminderScheduler.schedule(LocalContext.current, memo.copy(id = savedId))
+                            ReminderScheduler.schedule(ctx, memo.copy(id = savedId))
                         }
                         navController.popBackStack()
+                        }
                     }) { Text("保存") }
                 }
             )

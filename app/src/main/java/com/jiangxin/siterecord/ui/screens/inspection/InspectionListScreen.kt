@@ -34,7 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.collectAsState
 import com.jiangxin.siterecord.SiteRecordApp
 import com.jiangxin.siterecord.data.local.entity.Inspection
 import com.jiangxin.siterecord.ui.components.StatusBadge
@@ -45,8 +45,8 @@ import com.jiangxin.siterecord.util.formatDateTime
 @Composable
 fun InspectionListScreen(navController: androidx.navigation.NavController) {
     val application = LocalContext.current.applicationContext as SiteRecordApp
-    val list by application.inspectionRepository.observeAll().collectAsStateWithLifecycle()
-    val projects by application.projectRepository.observeAll().collectAsStateWithLifecycle()
+    val list by application.inspectionRepository.observeAll().collectAsState()
+    val projects by application.projectRepository.observeAll().collectAsState()
 
     var selProject by remember { mutableStateOf<Long?>(null) }
     var query by remember { mutableStateOf("") }
@@ -74,7 +74,7 @@ fun InspectionListScreen(navController: androidx.navigation.NavController) {
                         onValueChange = {},
                         readOnly = true,
                         label = { Text("项目") },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                         trailingIcon = { IconButton(onClick = { expanded = !expanded }) { Icon(Icons.Filled.ArrowDropDown, null) } }
                     )
                     DropdownMenu(expanded, { expanded = false }) {
