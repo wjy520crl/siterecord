@@ -24,7 +24,9 @@ class BootReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val app = context.applicationContext as SiteRecordApp
-                val memos = app.memoRepository.observeAll().first()
+                // 只重建未完成的：已完成/已反馈业主的备案不该再响，
+                // 否则老板重启一次手机，早就办完的事又全部冒出来
+                val memos = app.memoRepository.observePending().first()
                 memos.forEach { memo -> ReminderScheduler.schedule(context, memo) }
             } finally {
                 pendingResult.finish()

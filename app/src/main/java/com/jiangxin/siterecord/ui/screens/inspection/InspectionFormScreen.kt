@@ -1,5 +1,6 @@
 package com.jiangxin.siterecord.ui.screens.inspection
 
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -99,14 +100,22 @@ fun InspectionFormScreen(navController: androidx.navigation.NavController, proje
 
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
         if (ok && captureIndex != null) {
-            val loc = LocationHelper.getLocationText(ctx)
-            val out = WatermarkCamera.addWatermark(ctx, tempFile!!, loc, inspector.ifBlank { "小汪" })
-            tempFile!!.delete()
+            val src = tempFile
             val idx = captureIndex!!
-            if (out != null) {
-                items = items.mapIndexed { i, d -> if (i == idx) d.copy(photos = d.photos + out.absolutePath) else d }
-            }
             captureIndex = null
+            if (src != null) {
+                val loc = LocationHelper.getLocationText(ctx)
+                val out = WatermarkCamera.addWatermark(ctx, src, loc, inspector.ifBlank { "小汪" })
+                if (out != null) {
+                    items = items.mapIndexed { i, d -> if (i == idx) d.copy(photos = d.photos + out.absolutePath) else d }
+                    if (out.absolutePath != src.absolutePath) src.delete()
+                } else {
+                    // 水印失败就退回原图，绝不能静默丢照片——
+                    // 老板在工地拍完发现照片没了，只能再跑一趟现场
+                    items = items.mapIndexed { i, d -> if (i == idx) d.copy(photos = d.photos + src.absolutePath) else d }
+                    Toast.makeText(ctx, "水印烧录失败，已保存原图", Toast.LENGTH_LONG).show()
+                }
+            }
         }
     }
 
@@ -134,28 +143,43 @@ fun InspectionFormScreen(navController: androidx.navigation.NavController, proje
                 },
                 actions = {
                     TextButton(onClick = {
-                        scope.launch {
-                        val inspection = Inspection(
-                            id = inspectionId ?: 0,
-                            projectId = effectiveProjectId,
-                            dateTime = dateTime,
-                            inspector = inspector,
-                            stage = stage,
-                            weather = weather,
-                            situation = situation,
-                            overallComment = overallComment
-                        )
-                        val insId = if (inspectionId == null) repo.insert(inspection) else { repo.update(inspection); inspectionId }
-                        items.forEach { d ->
-                            val entity = InspectionItem(
-                                id = d.id, inspectionId = insId, projectId = effectiveProjectId,
-                                area = d.area, description = d.description, severity = d.severity,
-                                photos = d.photos, needFix = d.needFix, fixDeadline = d.fixDeadline,
-                                fixStatus = d.fixStatus, owner = d.owner, recheckNote = d.recheckNote
-                            )
-                            if (d.id == 0L) repo.insertItem(entity) else repo.updateItem(entity)
+                        // 不校验的话 projectId 会是 0，而 projects 表 id 从不为 0，
+                        // Room 外键约束直接抛异常；原先异常没人接，会闪退且刚填的内容全丢
+                        if (effectiveProjectId == 0L) {
+                            Toast.makeText(ctx, "请先选择关联项目", Toast.LENGTH_SHORT).show()
+                            return@TextButton
                         }
-                        navController.popBackStack()
+                        scope.launch {
+                            try {
+                                val inspection = Inspection(
+                                    id = inspectionId ?: 0,
+                                    projectId = effectiveProjectId,
+                                    dateTime = dateTime,
+                                    inspector = inspector,
+                                    stage = stage,
+                                    weather = weather,
+                                    situation = situation,
+                                    overallComment = overallComment
+                                )
+                                val insId = if (inspectionId == null) repo.insert(inspection) else { repo.update(inspection); inspectionId }
+                                // 整单判定「合格无问题」就不该再留问题条目，否则保存后条目还在，与状态自相矛盾；
+                                // 其余情况整单替换（事务内先删旧再插新，中途失败整体回滚，不留残单）
+                                val keep = if (situation == InspectionSituation.合格无问题) emptyList() else items
+                                repo.replaceItems(
+                                    insId,
+                                    keep.map { d ->
+                                        InspectionItem(
+                                            id = d.id, inspectionId = insId, projectId = effectiveProjectId,
+                                            area = d.area, description = d.description, severity = d.severity,
+                                            photos = d.photos, needFix = d.needFix, fixDeadline = d.fixDeadline,
+                                            fixStatus = d.fixStatus, owner = d.owner, recheckNote = d.recheckNote
+                                        )
+                                    }
+                                )
+                                navController.popBackStack()
+                            } catch (t: Throwable) {
+                                Toast.makeText(ctx, "保存失败：${t.message}", Toast.LENGTH_LONG).show()
+                            }
                         }
                     }) { Text("保存") }
                     if (inspectionId != null) {
@@ -223,8 +247,9 @@ fun InspectionFormScreen(navController: androidx.navigation.NavController, proje
                         },
                         onDeletePhoto = { p -> items = items.update(index) { copy(photos = photos - p) } },
                         onDelete = {
+                            // 只在内存里移除。原先会立刻写库删除：老板点错了按返回退出，
+                            // 条目就永久没了。真正的落库删除发生在点「保存」时的整单替换。
                             items = items - d
-                            if (d.id != 0L) scope.launch { repo.deleteItem(InspectionItem(id = d.id, inspectionId = inspectionId ?: 0, projectId = projectId, area = d.area, description = d.description, severity = d.severity, photos = d.photos, needFix = d.needFix, fixDeadline = d.fixDeadline, fixStatus = d.fixStatus, owner = d.owner, recheckNote = d.recheckNote)) }
                         }
                     )
                 }

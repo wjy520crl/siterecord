@@ -39,6 +39,7 @@ import com.jiangxin.siterecord.util.formatDate
 import com.jiangxin.siterecord.util.isOverdue
 import android.content.Context
 import android.content.Intent
+import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
 import com.jiangxin.siterecord.backup.BackupExporter
@@ -70,10 +71,15 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val pendingMemos = memoRepo.observePending()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val pendingRecheck = inspectionRepo.observePendingRecheck()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val metricProjectCount = projects.map { it.size }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
     val metricUnfixed = unfixedItems.map { it.size }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+    // 待复检 = 等着老板去现场验收的条目；与「待整改」（等工人改完）语义不同，都要单独看
+    val metricRecheck = pendingRecheck.map { it.size }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
     val metricPending = pendingMemos.map { it.size }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
@@ -125,12 +131,14 @@ fun HomeScreen(navController: androidx.navigation.NavController) {
     val unfixed by vm.metricUnfixed.collectAsState()
     val pending by vm.metricPending.collectAsState()
     val overdue by vm.metricOverdue.collectAsState()
+    val recheck by vm.metricRecheck.collectAsState()
     val followUps by vm.followUps.collectAsState()
 
     Scaffold(topBar = {
         TopAppBar(
             title = { Text("匠心工地记录") },
             actions = {
+                TextButton(onClick = { shareMemosCsv(context) }) { Text("导出CSV") }
                 TextButton(onClick = { shareBackup(context) }) { Text("备份") }
             }
         )
@@ -142,8 +150,17 @@ fun HomeScreen(navController: androidx.navigation.NavController) {
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     MetricCard(pc, "项目", Modifier.weight(1f))
-                    MetricCard(unfixed, "待整改", Modifier.weight(1f))
+                    MetricCard(unfixed, "整改中", Modifier.weight(1f))
                     MetricCard(pending, "待办备案", Modifier.weight(1f))
+                }
+            }
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    MetricCard(
+                        recheck, "待复检", Modifier.weight(1f),
+                        highlight = recheck > 0,
+                        onClick = { navController.navigate(Screen.Recheck.route) }
+                    )
                     MetricCard(overdue, "逾期", Modifier.weight(1f), highlight = overdue > 0)
                 }
             }
@@ -182,11 +199,40 @@ fun HomeScreen(navController: androidx.navigation.NavController) {
 }
 
 private fun shareBackup(context: Context) {
-    val jsonUri = BackupExporter.exportJsonUri(context) ?: return
-    val intent = Intent(Intent.ACTION_SEND).apply {
-        type = "application/json"
-        putExtra(Intent.EXTRA_STREAM, jsonUri)
-        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    // 原先异常会直接崩、返回 null 时静默无反应，老板点了没文件也不知道为什么
+    try {
+        val jsonUri = BackupExporter.exportJsonUri(context)
+            ?: run { toast(context, "备份导出失败，未生成文件"); return }
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "application/json"
+            putExtra(Intent.EXTRA_STREAM, jsonUri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(
+            Intent.createChooser(intent, "导出备份（JSON）").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+    } catch (t: Throwable) {
+        toast(context, "备份导出失败：${t.message}")
     }
-    context.startActivity(Intent.createChooser(intent, "导出备份（JSON）"))
+}
+
+private fun shareMemosCsv(context: Context) {
+    try {
+        val uri = BackupExporter.exportCsvUri(context)
+            ?: run { toast(context, "CSV 导出失败，未生成文件"); return }
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/csv"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(
+            Intent.createChooser(intent, "导出备案 CSV").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+    } catch (t: Throwable) {
+        toast(context, "CSV 导出失败：${t.message}")
+    }
+}
+
+private fun toast(context: Context, msg: String) {
+    Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
 }

@@ -26,6 +26,8 @@ class InspectionRepository(
     suspend fun insertItem(item: InspectionItem): Long = itemDao.insert(item)
     suspend fun updateItem(item: InspectionItem) = itemDao.update(item)
     suspend fun deleteItem(item: InspectionItem) = itemDao.delete(item)
+    suspend fun replaceItems(inspectionId: Long, items: List<InspectionItem>) =
+        itemDao.replaceItems(inspectionId, items)
 
     /**
      * 复检验收：条目标记为已验收并写入复检结论。

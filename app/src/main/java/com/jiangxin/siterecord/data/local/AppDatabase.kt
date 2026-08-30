@@ -36,7 +36,12 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "siterecord.db"
-                ).fallbackToDestructiveMigration().build()
+                )
+                    // 故意不启用 fallbackToDestructiveMigration：
+                    // 一旦将来改了表结构、version 升到 2 却没写 Migration，
+                    // 破坏性重建会把老板在工地录的全部项目/巡查/备案/照片一次性清空且毫无提示。
+                    // 宁可让 App 启动当场崩（立刻能发现），也不要静默丢数据。
+                    .build()
                 INSTANCE = instance
                 instance
             }

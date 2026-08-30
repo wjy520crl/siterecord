@@ -1,6 +1,7 @@
 package com.jiangxin.siterecord.ui.screens.memo
 
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -86,10 +87,18 @@ fun MemoFormScreen(navController: androidx.navigation.NavController, projectId: 
 
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
         if (ok && tempFile != null) {
+            val src = tempFile!!
             val loc = LocationHelper.getLocationText(ctx)
-            val out = WatermarkCamera.addWatermark(ctx, tempFile!!, loc, photographer.ifBlank { "小汪" })
-            tempFile!!.delete()
-            if (out != null) photos = photos + out.absolutePath
+            val out = WatermarkCamera.addWatermark(ctx, src, loc, photographer.ifBlank { "小汪" })
+            if (out != null) {
+                photos = photos + out.absolutePath
+                if (out.absolutePath != src.absolutePath) src.delete()
+            } else {
+                // 水印失败就退回原图，绝不静默丢照片：
+                // 老板在工地拍完发现照片没了，只能再跑一趟现场
+                photos = photos + src.absolutePath
+                Toast.makeText(ctx, "水印烧录失败，已保存原图", Toast.LENGTH_LONG).show()
+            }
         }
     }
 
@@ -114,27 +123,38 @@ fun MemoFormScreen(navController: androidx.navigation.NavController, projectId: 
                 },
                 actions = {
                     TextButton(onClick = {
-                        scope.launch {
-                        val memo = Memo(
-                            id = memoId ?: 0,
-                            projectId = effectiveProjectId,
-                            source = source,
-                            title = title,
-                            detail = detail,
-                            importance = importance,
-                            status = status,
-                            deadline = deadline,
-                            remindLeadDays = lead,
-                            photos = photos,
-                            photographer = photographer
-                        )
-                        val savedId = if (memoId == null) repo.insert(memo) else { repo.update(memo); memoId }
-                        // 先撤销旧闹钟：改期或清空截止日后，旧提醒不应再触发
-                        ReminderScheduler.cancel(ctx, savedId)
-                        if (deadline != null) {
-                            ReminderScheduler.schedule(ctx, memo.copy(id = savedId))
+                        // 不校验的话 projectId 会是 0，而 projects 表 id 从不为 0，
+                        // Room 外键约束直接抛异常；原先异常没人接，会闪退且刚填的内容全丢
+                        if (effectiveProjectId == 0L) {
+                            Toast.makeText(ctx, "请先选择关联项目", Toast.LENGTH_SHORT).show()
+                            return@TextButton
                         }
-                        navController.popBackStack()
+                        scope.launch {
+                            try {
+                                val memo = Memo(
+                                    id = memoId ?: 0,
+                                    projectId = effectiveProjectId,
+                                    source = source,
+                                    title = title,
+                                    detail = detail,
+                                    importance = importance,
+                                    status = status,
+                                    deadline = deadline,
+                                    remindLeadDays = lead,
+                                    photos = photos,
+                                    photographer = photographer
+                                )
+                                val savedId = if (memoId == null) repo.insert(memo) else { repo.update(memo); memoId }
+                                // 先撤销旧闹钟：改期或清空截止日后，旧提醒不应再触发
+                                ReminderScheduler.cancel(ctx, savedId)
+                                // 已完成/已反馈业主的备案不该再提醒，否则办完了还天天弹
+                                if (deadline != null && status != MemoStatus.已完成 && status != MemoStatus.已反馈业主) {
+                                    ReminderScheduler.schedule(ctx, memo.copy(id = savedId))
+                                }
+                                navController.popBackStack()
+                            } catch (t: Throwable) {
+                                Toast.makeText(ctx, "保存失败：${t.message}", Toast.LENGTH_LONG).show()
+                            }
                         }
                     }) { Text("保存") }
                     if (memoId != null) {

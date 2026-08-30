@@ -1,6 +1,7 @@
 package com.jiangxin.siterecord.ui.screens.projects
 
 import android.app.Application
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -45,6 +46,7 @@ import com.jiangxin.siterecord.data.local.entity.Inspection
 import com.jiangxin.siterecord.data.repository.InspectionRepository
 import com.jiangxin.siterecord.data.repository.MemoRepository
 import com.jiangxin.siterecord.data.repository.ProjectRepository
+import com.jiangxin.siterecord.reminder.ReminderScheduler
 import com.jiangxin.siterecord.ui.components.ConfirmDeleteDialog
 import com.jiangxin.siterecord.ui.components.StatusBadge
 import com.jiangxin.siterecord.ui.nav.Screen
@@ -53,6 +55,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 
 data class TimelineEntry(
@@ -166,8 +169,16 @@ fun ProjectDetailScreen(navController: androidx.navigation.NavController, projec
                 showDelete = false
                 project?.let { p ->
                     scope.launch {
-                        app.projectRepository.delete(p)
-                        navController.popBackStack()
+                        try {
+                            // 级联会删掉该项目下所有备案，但 AlarmManager 的闹钟不会跟着消失：
+                            // 到日子照样弹出已删除备案的提醒，点进去什么都没有。先逐个撤销。
+                            app.memoRepository.observeByProject(p.id).first()
+                                .forEach { m -> ReminderScheduler.cancel(app, m.id) }
+                            app.projectRepository.delete(p)
+                            navController.popBackStack()
+                        } catch (t: Throwable) {
+                            Toast.makeText(app, "删除失败：${t.message}", Toast.LENGTH_LONG).show()
+                        }
                     }
                 }
             },

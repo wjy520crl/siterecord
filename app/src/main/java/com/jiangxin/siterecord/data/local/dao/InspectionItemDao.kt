@@ -5,6 +5,7 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import com.jiangxin.siterecord.data.local.entity.InspectionItem
 import kotlinx.coroutines.flow.Flow
@@ -35,4 +36,18 @@ interface InspectionItemDao {
 
     @Delete
     suspend fun delete(item: InspectionItem)
+
+    @Query("DELETE FROM inspection_items WHERE inspectionId = :inspectionId")
+    suspend fun deleteByInspection(inspectionId: Long)
+
+    /**
+     * 整单替换问题条目：先删旧、再全量插入（统一重置 id，否则删完再 update 会全部落空）。
+     * 放在同一事务里——原先是逐条 insert/update，中途任何一条失败都会留下
+     * 「有巡查单但没有问题项」的残单，老板回头看是空的。
+     */
+    @Transaction
+    suspend fun replaceItems(inspectionId: Long, items: List<InspectionItem>) {
+        deleteByInspection(inspectionId)
+        items.forEach { insert(it.copy(id = 0L)) }
+    }
 }

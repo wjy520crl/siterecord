@@ -46,7 +46,9 @@ object BackupExporter {
         val outDir = File(context.filesDir, "backups")
         outDir.mkdirs()
         val file = File(outDir, "memos_${stamp()}.csv")
-        file.writeText(sb.toString())
+        // 必须写 UTF-8 BOM：不加的话 Excel 打开会按本地编码解析，中文全变乱码。
+        // 老板导出 CSV 第一件事就是用 Excel 打开，这一行决定了他能不能看懂。
+        file.writeText("\uFEFF" + sb.toString())
         return FileProvider.getUriForFile(context, context.packageName + ".fileprovider", file)
     }
 
