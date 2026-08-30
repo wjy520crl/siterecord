@@ -18,6 +18,21 @@ android {
         vectorDrawables { useSupportLibrary = true }
     }
 
+    // 固定 debug 签名密钥：CI 每次都是全新 VM，若沿用 AGP 默认密钥，
+    // 每个构建产出的签名都不同，升级安装会因签名不匹配失败 → 必须先卸载 → 数据全丢。
+    // CI 会生成并缓存 keystore/debug.jks；本地没有该文件时自动回落到 AGP 默认密钥。
+    signingConfigs {
+        getByName("debug") {
+            val ks = file("../keystore/debug.jks")
+            if (ks.exists()) {
+                storeFile = ks
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false

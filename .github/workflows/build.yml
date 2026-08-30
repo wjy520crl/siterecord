@@ -31,13 +31,27 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      # 缓存 debug 签名密钥：CI 每次都是全新 VM，Gradle 会生成新的 debug.keystore，
-      # 导致每次升级都得先卸载（数据全丢）。固定 keystore 后才能保住现场数据。
-      - name: Cache Android debug keystore
+      # 固定 debug 签名密钥：CI 每次全新 VM，AGP 默认密钥每次都不同，
+      # 升级安装会因签名不匹配失败 → 必须先卸载 → 现场数据全丢。
+      # 这里生成一份固定密钥并缓存复用（首次生成后落盘，此后 cache hit）。
+      - name: Restore stable debug keystore
+        id: cache-keystore
         uses: actions/cache@v4
         with:
-          path: ~/.android/debug.keystore
-          key: android-debug-keystore-v1
+          path: keystore/debug.jks
+          key: stable-debug-keystore-v1
+
+      - name: Generate stable debug keystore if missing
+        if: steps.cache-keystore.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p keystore
+          keytool -genkeypair -v -keystore keystore/debug.jks \
+            -storepass android -keypass android -alias androiddebugkey \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=CN"
+
+      - name: Verify keystore exists
+        run: ls -la keystore/
 
       - name: Build debug APK
         run: gradle assembleDebug --no-daemon
