@@ -17,8 +17,15 @@ interface InspectionItemDao {
     @Query("SELECT * FROM inspection_items WHERE fixStatus NOT IN ('已整改','已验收')")
     fun observeUnfixed(): Flow<List<InspectionItem>>
 
+    /** 待复检：需整改、但尚未验收通过的条目 */
+    @Query("SELECT * FROM inspection_items WHERE needFix = 1 AND fixStatus != '已验收' ORDER BY id DESC")
+    fun observePendingRecheck(): Flow<List<InspectionItem>>
+
     @Query("SELECT * FROM inspection_items")
     fun observeAll(): Flow<List<InspectionItem>>
+
+    @Query("SELECT * FROM inspection_items WHERE inspectionId = :inspectionId")
+    suspend fun getByInspection(inspectionId: Long): List<InspectionItem>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(item: InspectionItem): Long

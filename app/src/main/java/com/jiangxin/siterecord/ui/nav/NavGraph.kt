@@ -26,6 +26,7 @@ import androidx.navigation.navArgument
 import com.jiangxin.siterecord.ui.screens.home.HomeScreen
 import com.jiangxin.siterecord.ui.screens.inspection.InspectionFormScreen
 import com.jiangxin.siterecord.ui.screens.inspection.InspectionListScreen
+import com.jiangxin.siterecord.ui.screens.inspection.RecheckScreen
 import com.jiangxin.siterecord.ui.screens.memo.MemoFormScreen
 import com.jiangxin.siterecord.ui.screens.memo.MemoListScreen
 import com.jiangxin.siterecord.ui.screens.projects.ProjectDetailScreen
@@ -99,6 +100,7 @@ fun AppNavHost() {
                 MemoFormScreen(navController, pid, mid)
             }
             composable(Screen.Inspections.route) { InspectionListScreen(navController) }
+            composable(Screen.Recheck.route) { RecheckScreen(navController) }
             composable(Screen.InspectionForm.route, arguments = listOf(
                 navArgument("projectId") { type = NavType.LongType },
                 navArgument("inspectionId") { type = NavType.LongType; defaultValue = -1L }

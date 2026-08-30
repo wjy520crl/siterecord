@@ -16,6 +16,7 @@ sealed class Screen(val route: String) {
         fun create(projectId: Long, memoId: Long? = null) = "memo_form?projectId=$projectId&memoId=${memoId ?: -1L}"
     }
     object Inspections : Screen("inspections")
+    object Recheck : Screen("recheck")
     object InspectionForm : Screen("inspection_form?projectId={projectId}&inspectionId={inspectionId}") {
         fun create(projectId: Long, inspectionId: Long? = null) = "inspection_form?projectId=$projectId&inspectionId=${inspectionId ?: -1L}"
     }

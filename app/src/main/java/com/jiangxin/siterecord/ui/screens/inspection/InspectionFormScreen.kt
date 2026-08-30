@@ -292,7 +292,8 @@ private fun ItemCard(
             OutlinedTextField(d.owner, onOwner, label = { Text("负责人") }, modifier = Modifier.fillMaxWidth())
             Text("整改状态", style = MaterialTheme.typography.labelSmall)
             EnumChips(FixStatus.entries.toList(), d.fixStatus, onFixStatus)
-            if (d.recheckNote.isNotEmpty() || true) {
+            // 只有需要整改（或已填过结论）的条目才显示复检结论，原先是 `|| true` 恒真
+            if (d.needFix || d.recheckNote.isNotEmpty()) {
                 OutlinedTextField(d.recheckNote, onRecheck, label = { Text("复检结论") }, modifier = Modifier.fillMaxWidth())
             }
             Row(verticalAlignment = Alignment.CenterVertically) {

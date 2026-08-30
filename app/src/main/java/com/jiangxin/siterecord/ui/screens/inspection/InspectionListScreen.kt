@@ -24,6 +24,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -47,6 +48,7 @@ fun InspectionListScreen(navController: androidx.navigation.NavController) {
     val application = LocalContext.current.applicationContext as SiteRecordApp
     val list by application.inspectionRepository.observeAll().collectAsState(initial = emptyList())
     val projects by application.projectRepository.observeAll().collectAsState(initial = emptyList())
+    val pendingRecheck by application.inspectionRepository.observePendingRecheck().collectAsState(initial = emptyList())
 
     var selProject by remember { mutableStateOf<Long?>(null) }
     var query by remember { mutableStateOf("") }
@@ -59,7 +61,16 @@ fun InspectionListScreen(navController: androidx.navigation.NavController) {
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("巡查报告") }) },
+        topBar = {
+            TopAppBar(
+                title = { Text("巡查报告") },
+                actions = {
+                    TextButton(onClick = { navController.navigate(Screen.Recheck.route) }) {
+                        Text(if (pendingRecheck.isEmpty()) "待复检" else "待复检（${pendingRecheck.size}）")
+                    }
+                }
+            )
+        },
         floatingActionButton = {
             FloatingActionButton(onClick = { navController.navigate(Screen.InspectionForm.create(0)) }) {
                 Icon(Icons.Filled.Add, "新建巡查")
