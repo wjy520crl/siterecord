@@ -1,5 +1,7 @@
 package com.jiangxin.siterecord.ui.screens.memo
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -8,6 +10,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -20,19 +23,23 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,9 +50,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.compose.runtime.collectAsState
 import com.jiangxin.siterecord.SiteRecordApp
+import com.jiangxin.siterecord.audio.VoiceRecorder
 import com.jiangxin.siterecord.camera.LocationHelper
 import com.jiangxin.siterecord.camera.WatermarkCamera
 import com.jiangxin.siterecord.data.local.entity.Importance
@@ -82,6 +91,27 @@ fun MemoFormScreen(navController: androidx.navigation.NavController, projectId: 
     var photos by remember { mutableStateOf<List<String>>(emptyList()) }
     var photographer by remember { mutableStateOf("小汪") }
     var tempFile by remember { mutableStateOf<File?>(null) }
+    var voicePath by remember { mutableStateOf<String?>(null) }
+    var recording by remember { mutableStateOf(false) }
+    val recorder = remember { VoiceRecorder(ctx) }
+
+    // 录音权限按需申请：启动时就弹会打扰，只有真要点录音时才要
+    val micLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) {
+            if (recorder.start() != null) recording = true
+            else Toast.makeText(ctx, "录音启动失败，请检查麦克风", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(ctx, "需要麦克风权限才能录语音备忘", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // 离开页面时必须停掉录音，否则 MediaRecorder 一直占着麦克风
+    DisposableEffect(Unit) {
+        onDispose {
+            recorder.cancel()
+            recorder.stopPlay()
+        }
+    }
 
     val leadOptions = listOf(0 to "当天", 1 to "提前1天", 3 to "提前3天", 7 to "提前7天")
 
@@ -109,6 +139,7 @@ fun MemoFormScreen(navController: androidx.navigation.NavController, projectId: 
                 source = m.source; title = m.title; detail = m.detail; importance = m.importance
                 status = m.status; deadline = m.deadline; lead = m.remindLeadDays
                 photos = m.photos; photographer = m.photographer
+                voicePath = m.voicePath
                 effectiveProjectId = m.projectId
             }
         }
@@ -142,6 +173,7 @@ fun MemoFormScreen(navController: androidx.navigation.NavController, projectId: 
                                     deadline = deadline,
                                     remindLeadDays = lead,
                                     photos = photos,
+                                    voicePath = voicePath,
                                     photographer = photographer
                                 )
                                 val savedId = if (memoId == null) repo.insert(memo) else { repo.update(memo); memoId }
@@ -226,7 +258,38 @@ fun MemoFormScreen(navController: androidx.navigation.NavController, projectId: 
                     }
                 }
             }
-            Text("语音备忘（占位，后续版本实现）", style = MaterialTheme.typography.labelSmall)
+            Text("语音备忘", style = MaterialTheme.typography.labelSmall)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (recording) {
+                    Text("● 录音中…", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+                    FilledTonalButton(onClick = {
+                        val f = recorder.stop()
+                        recording = false
+                        if (f != null) voicePath = f.absolutePath
+                        else Toast.makeText(ctx, "录音太短，未保存", Toast.LENGTH_SHORT).show()
+                    }) { Text("停止") }
+                } else if (voicePath != null) {
+                    IconButton(onClick = { recorder.play(voicePath!!) }) {
+                        Icon(Icons.Filled.PlayArrow, "播放")
+                    }
+                    Text("已录制，点 ▶ 试听", style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.weight(1f))
+                    TextButton(onClick = {
+                        recorder.stopPlay()
+                        File(voicePath!!).delete()
+                        voicePath = null
+                    }) { Text("删除") }
+                } else {
+                    OutlinedButton(onClick = {
+                        if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                            if (recorder.start() != null) recording = true
+                            else Toast.makeText(ctx, "录音启动失败，请检查麦克风", Toast.LENGTH_SHORT).show()
+                        } else {
+                            micLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                        }
+                    }) { Text("开始录音") }
+                }
+            }
         }
     }
 

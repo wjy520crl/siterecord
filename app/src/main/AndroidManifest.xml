@@ -6,6 +6,8 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- 语音备忘：工地上手上有灰/戴手套，说话比打字快得多 -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <!-- Android 12+ 起，精确闹钟必须声明；14+ 起 SCHEDULE_EXACT_ALARM 默认不再授予，
          故同时声明 USE_EXACT_ALARM 保证「下午三点提醒我」这类待办能准时响 -->
