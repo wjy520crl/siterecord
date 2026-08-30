@@ -84,9 +84,10 @@ fun AppNavHost() {
                 val id = it.arguments?.getLong("projectId") ?: 0L
                 ProjectDetailScreen(navController, id)
             }
-            composable(Screen.ProjectForm.route, arguments = listOf(navArgument("projectId") { type = NavType.LongType; nullable = true; defaultValue = null })) {
-                val pid = it.arguments?.getLong("projectId")
-                ProjectFormScreen(navController, if (pid == 0L) null else pid)
+            composable(Screen.ProjectForm.route, arguments = listOf(navArgument("projectId") { type = NavType.LongType; defaultValue = -1L })) {
+                // NavType.LongType 不支持可空，用 -1 作哨兵（0 同样视为「新建」）
+                val pid = it.arguments?.getLong("projectId")?.takeIf { p -> p != -1L && p != 0L }
+                ProjectFormScreen(navController, pid)
             }
             composable(Screen.Memos.route) { MemoListScreen(navController) }
             composable(Screen.MemoForm.route, arguments = listOf(
