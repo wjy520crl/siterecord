@@ -54,6 +54,7 @@ import com.jiangxin.siterecord.data.local.entity.InspectionItem
 import com.jiangxin.siterecord.data.local.entity.InspectionSituation
 import com.jiangxin.siterecord.data.local.entity.ProjectStage
 import com.jiangxin.siterecord.data.local.entity.Severity
+import com.jiangxin.siterecord.ui.components.ConfirmDeleteDialog
 import com.jiangxin.siterecord.ui.components.PhotoThumb
 import com.jiangxin.siterecord.util.formatDate
 import kotlinx.coroutines.flow.first
@@ -94,6 +95,7 @@ fun InspectionFormScreen(navController: androidx.navigation.NavController, proje
     var items by remember { mutableStateOf<List<ItemDraft>>(emptyList()) }
     var captureIndex by remember { mutableStateOf<Int?>(null) }
     var tempFile by remember { mutableStateOf<File?>(null) }
+    var showDelete by remember { mutableStateOf(false) }
 
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
         if (ok && captureIndex != null) {
@@ -146,7 +148,7 @@ fun InspectionFormScreen(navController: androidx.navigation.NavController, proje
                         val insId = if (inspectionId == null) repo.insert(inspection) else { repo.update(inspection); inspectionId }
                         items.forEach { d ->
                             val entity = InspectionItem(
-                                id = d.id, inspectionId = insId, projectId = projectId,
+                                id = d.id, inspectionId = insId, projectId = effectiveProjectId,
                                 area = d.area, description = d.description, severity = d.severity,
                                 photos = d.photos, needFix = d.needFix, fixDeadline = d.fixDeadline,
                                 fixStatus = d.fixStatus, owner = d.owner, recheckNote = d.recheckNote
@@ -156,6 +158,9 @@ fun InspectionFormScreen(navController: androidx.navigation.NavController, proje
                         navController.popBackStack()
                         }
                     }) { Text("保存") }
+                    if (inspectionId != null) {
+                        TextButton(onClick = { showDelete = true }) { Text("删除") }
+                    }
                 }
             )
         }
@@ -226,6 +231,22 @@ fun InspectionFormScreen(navController: androidx.navigation.NavController, proje
                 TextButton(onClick = { items = items + ItemDraft() }) { Text("+ 添加问题条目") }
             }
         }
+    }
+
+    if (showDelete) {
+        ConfirmDeleteDialog(
+            title = "删除巡查报告",
+            message = "将删除本条巡查报告及其下全部问题条目与照片记录，此操作不可恢复。确定继续吗？",
+            onConfirm = {
+                showDelete = false
+                val id = inspectionId ?: return@ConfirmDeleteDialog
+                scope.launch {
+                    repo.getById(id)?.let { repo.delete(it) }
+                    navController.popBackStack()
+                }
+            },
+            onDismiss = { showDelete = false }
+        )
     }
 }
 

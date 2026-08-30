@@ -24,6 +24,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -41,10 +45,12 @@ import com.jiangxin.siterecord.data.local.entity.Inspection
 import com.jiangxin.siterecord.data.repository.InspectionRepository
 import com.jiangxin.siterecord.data.repository.MemoRepository
 import com.jiangxin.siterecord.data.repository.ProjectRepository
+import com.jiangxin.siterecord.ui.components.ConfirmDeleteDialog
 import com.jiangxin.siterecord.ui.components.StatusBadge
 import com.jiangxin.siterecord.ui.nav.Screen
 import com.jiangxin.siterecord.util.formatDateTime
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
@@ -92,6 +98,10 @@ fun ProjectDetailScreen(navController: androidx.navigation.NavController, projec
     val project by vm.project.collectAsState()
     val timeline by vm.timeline.collectAsState()
 
+    val app = LocalContext.current.applicationContext as SiteRecordApp
+    val scope = rememberCoroutineScope()
+    var showDelete by remember { mutableStateOf(false) }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -103,6 +113,7 @@ fun ProjectDetailScreen(navController: androidx.navigation.NavController, projec
                 },
                 actions = {
                     TextButton(onClick = { navController.navigate(Screen.ProjectForm.create(projectId)) }) { Text("编辑") }
+                    TextButton(onClick = { showDelete = true }) { Text("删除") }
                 }
             )
         }
@@ -145,6 +156,23 @@ fun ProjectDetailScreen(navController: androidx.navigation.NavController, projec
                 Button(onClick = { navController.navigate(Screen.MemoForm.create(projectId)) }, modifier = Modifier.weight(1f)) { Text("+ 备案录") }
             }
         }
+    }
+
+    if (showDelete) {
+        ConfirmDeleteDialog(
+            title = "删除项目",
+            message = "将删除「${project?.name ?: ""}」及其下全部巡查报告与备案录，此操作不可恢复。确定继续吗？",
+            onConfirm = {
+                showDelete = false
+                project?.let { p ->
+                    scope.launch {
+                        app.projectRepository.delete(p)
+                        navController.popBackStack()
+                    }
+                }
+            },
+            onDismiss = { showDelete = false }
+        )
     }
 }
 

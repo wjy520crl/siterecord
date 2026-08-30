@@ -52,6 +52,7 @@ import com.jiangxin.siterecord.data.local.entity.Memo
 import com.jiangxin.siterecord.data.local.entity.MemoSource
 import com.jiangxin.siterecord.data.local.entity.MemoStatus
 import com.jiangxin.siterecord.reminder.ReminderScheduler
+import com.jiangxin.siterecord.ui.components.ConfirmDeleteDialog
 import com.jiangxin.siterecord.ui.components.PhotoThumb
 import com.jiangxin.siterecord.util.formatDate
 import java.io.File
@@ -67,6 +68,7 @@ fun MemoFormScreen(navController: androidx.navigation.NavController, projectId: 
     val scope = rememberCoroutineScope()
     var effectiveProjectId by remember { mutableStateOf(projectId) }
     var projectExpanded by remember { mutableStateOf(false) }
+    var showDelete by remember { mutableStateOf(false) }
     val nameOf: (Long) -> String = { id -> projects.firstOrNull { it.id == id }?.name ?: "" }
 
     var source by remember { mutableStateOf(MemoSource.业主) }
@@ -127,12 +129,17 @@ fun MemoFormScreen(navController: androidx.navigation.NavController, projectId: 
                             photographer = photographer
                         )
                         val savedId = if (memoId == null) repo.insert(memo) else { repo.update(memo); memoId }
+                        // 先撤销旧闹钟：改期或清空截止日后，旧提醒不应再触发
+                        ReminderScheduler.cancel(ctx, savedId)
                         if (deadline != null) {
                             ReminderScheduler.schedule(ctx, memo.copy(id = savedId))
                         }
                         navController.popBackStack()
                         }
                     }) { Text("保存") }
+                    if (memoId != null) {
+                        TextButton(onClick = { showDelete = true }) { Text("删除") }
+                    }
                 }
             )
         }
@@ -201,6 +208,23 @@ fun MemoFormScreen(navController: androidx.navigation.NavController, projectId: 
             }
             Text("语音备忘（占位，后续版本实现）", style = MaterialTheme.typography.labelSmall)
         }
+    }
+
+    if (showDelete) {
+        ConfirmDeleteDialog(
+            title = "删除备案",
+            message = "将删除本条备案录并撤销其待办提醒，此操作不可恢复。确定继续吗？",
+            onConfirm = {
+                showDelete = false
+                val id = memoId ?: return@ConfirmDeleteDialog
+                scope.launch {
+                    repo.getById(id)?.let { repo.delete(it) }
+                    ReminderScheduler.cancel(ctx, id)
+                    navController.popBackStack()
+                }
+            },
+            onDismiss = { showDelete = false }
+        )
     }
 }
 

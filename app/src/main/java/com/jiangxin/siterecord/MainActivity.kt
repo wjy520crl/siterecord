@@ -9,6 +9,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import com.jiangxin.siterecord.ui.nav.AppNavHost
 import com.jiangxin.siterecord.ui.theme.SiteRecordTheme
+import com.jiangxin.siterecord.util.RequireRequiredPermissions
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -19,6 +20,8 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
+                    // 进入即申请定位与通知权限，否则水印地点与备案提醒形同虚设
+                    RequireRequiredPermissions()
                     AppNavHost()
                 }
             }

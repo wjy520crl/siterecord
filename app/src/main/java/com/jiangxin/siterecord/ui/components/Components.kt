@@ -14,9 +14,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -28,6 +30,31 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import com.jiangxin.siterecord.ui.theme.OverdueRed
 import com.jiangxin.siterecord.ui.theme.WarningAmber
+
+/**
+ * 通用删除二次确认弹窗。
+ * 删除是不可逆操作，且项目删除会级联删掉其下全部巡查与备案，因此必须显式告知后果。
+ */
+@Composable
+fun ConfirmDeleteDialog(
+    title: String,
+    message: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+    confirmText: String = "确认删除"
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = { Text(message) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) { Text(confirmText) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("取消") }
+        }
+    )
+}
 
 @Composable
 fun MetricCard(value: Int, label: String, modifier: Modifier = Modifier, highlight: Boolean = false) {
